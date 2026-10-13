@@ -15,6 +15,7 @@ import { DEFAULT_PAGE_SIZE, taskMatchesQuery } from '../utils/query';
 import { createTask, updateTask } from '../api/tasks';
 import type { Task, TaskInput, TaskListQuery, TaskStatus } from '../utils/types';
 import { useTasks } from '../hooks/useTasks';
+import { useFormSetting } from '../hooks/useFormSetting';
 import { Pagination } from './Pagination';
 import { TaskFormDialog } from './TaskFormDialog';
 import { TaskTable } from './TaskTable';
@@ -50,6 +51,10 @@ const useStyles = makeStyles({
       backgroundColor: tokens.colorPaletteRedBackground2,
     },
   },
+  details: {
+    margin: 0,
+    paddingLeft: '18px',
+  },
 });
 
 export function TaskListPage() {
@@ -62,6 +67,7 @@ export function TaskListPage() {
   const [updatesInFlight, setUpdatesInFlight] = useState(0);
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const { data, loading, error, reload, cancelReload, replaceTask, removeUnmatchedTask, dismissError } = useTasks(query);
+  const { fields, formSettingError, retryFormSetting } = useFormSetting();
   const items = data?.items ?? [];
 
   useEffect(() => {
@@ -149,7 +155,14 @@ export function TaskListPage() {
         <MessageBar intent="error">
           <MessageBarBody>
             <MessageBarTitle>Something went wrong</MessageBarTitle>
-            {error}
+            {error.message}
+            {error.details.length > 0 && (
+              <ul className={styles.details}>
+                {error.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            )}
           </MessageBarBody>
           <MessageBarActions
             containerAction={
@@ -160,6 +173,26 @@ export function TaskListPage() {
               Retry
             </Button>
           </MessageBarActions>
+        </MessageBar>
+      )}
+
+      {formSettingError !== undefined && (
+        <MessageBar intent="error">
+          <MessageBarBody>
+            <MessageBarTitle>Form settings couldn&apos;t be loaded</MessageBarTitle>
+            Custom fields are hidden and can&apos;t be edited until this loads. Everything else works as usual.
+          </MessageBarBody>
+          <MessageBarActions
+            containerAction={
+              <Button
+                appearance="transparent"
+                icon={<ArrowSyncRegular />}
+                onClick={() => retryFormSetting()}
+              >
+                Retry
+              </Button>
+            }
+          />
         </MessageBar>
       )}
 
@@ -186,6 +219,7 @@ export function TaskListPage() {
           <>
             <TaskTable
               tasks={items}
+              fields={fields}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onToggleSelectAll={toggleSelectAll}
@@ -210,7 +244,7 @@ export function TaskListPage() {
         )}
       </div>
 
-      <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} onSubmit={handleCreate} />
+      <TaskFormDialog open={dialogOpen} fields={fields} onOpenChange={setDialogOpen} onSubmit={handleCreate} />
 
       <DeleteDialog
         pendingDelete={pendingDelete}

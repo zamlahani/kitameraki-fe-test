@@ -11,13 +11,18 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { DeleteRegular, DismissRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
-import { TASK_PRIORITIES, TASK_STATUSES, type Task, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
+import { TASK_PRIORITIES, TASK_STATUSES, type FormField, type Task, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
 import { useErrorToast } from '../hooks/useErrorToast';
 import { dayjs, formatTags, PRIORITY_LABELS, STATUS_LABELS } from '../utils/helpers';
 import { buildTaskUpdate, toTaskDraft } from '../utils/taskDraft';
+// TEMP(verify-error): re-add this import when FE validation is restored.
+// import { missingRequiredFields } from '../utils/customFields';
+import { formatFieldValue } from '../utils/customFields';
+import { CustomFieldInput } from './CustomFieldInput';
 
 interface TaskRowProps {
   task: Task;
+  fields: FormField[];
   selected: boolean;
   onToggleSelect: (id: string) => void;
   onUpdate: (id: string, patch: Partial<TaskInput>) => Promise<void>;
@@ -46,25 +51,39 @@ const useStyles = makeStyles({
   },
 });
 
-export function TaskRow({ task, selected, onToggleSelect, onUpdate, onStatusChange, onDelete }: TaskRowProps) {
+export function TaskRow({ task, fields, selected, onToggleSelect, onUpdate, onStatusChange, onDelete }: TaskRowProps) {
   const styles = useStyles();
   const showError = useErrorToast();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<TaskDraft>(toTaskDraft(task));
+  const [draft, setDraft] = useState<TaskDraft>(() => toTaskDraft(task, fields));
   const [busy, setBusy] = useState(false);
 
   const startEditing = () => {
-    setDraft(toTaskDraft(task));
+    setDraft(toTaskDraft(task, fields));
     setEditing(true);
   };
 
   const save = async () => {
+    // TEMP(verify-error): FE validation disabled so backend error details surface. Restore before shipping.
+    // const missing = missingRequiredFields(fields, draft.customFields);
+    // if (missing.length > 0) {
+    //   showError(
+    //     `Save "${task.title}" failed`,
+    //     undefined,
+    //     `Required: ${missing.map((field) => field.label).join(', ')}`,
+    //   );
+    //   return;
+    // }
+
     setBusy(true);
     try {
-      await onUpdate(task.id, buildTaskUpdate(draft));
+      const patch = buildTaskUpdate(task, draft, fields);
+      if (Object.keys(patch).length > 0) {
+        await onUpdate(task.id, patch);
+      }
       setEditing(false);
     } catch (err) {
-      showError(`Save "${task.title}" failed`, err, 'Please try again.');
+      showError(`Save "${task.title}" failed`, err, 'Please try again.', fields);
     } finally {
       setBusy(false);
     }
@@ -75,7 +94,7 @@ export function TaskRow({ task, selected, onToggleSelect, onUpdate, onStatusChan
     try {
       await onStatusChange(task, status);
     } catch (err) {
-      showError(`Update "${task.title}" failed`, err, 'Please try again.');
+      showError(`Update "${task.title}" failed`, err, 'Please try again.', fields);
     } finally {
       setBusy(false);
     }
@@ -96,6 +115,7 @@ export function TaskRow({ task, selected, onToggleSelect, onUpdate, onStatusChan
           <Input
             className={styles.field}
             value={draft.title}
+            // TODO add required prop
             disabled={busy}
             onChange={(_, data) => setDraft({ ...draft, title: data.value })}
           />
@@ -184,6 +204,23 @@ export function TaskRow({ task, selected, onToggleSelect, onUpdate, onStatusChan
           formatTags(task.tags)
         )}
       </TableCell>
+      {fields.map((field) => (
+        <TableCell key={field.id}>
+          {editing && !field.disabled ? (
+            <CustomFieldInput
+              className={styles.field}
+              field={field}
+              value={draft.customFields[field.id] ?? ''}
+              disabled={busy}
+              onChange={(value) =>
+                setDraft({ ...draft, customFields: { ...draft.customFields, [field.id]: value } })
+              }
+            />
+          ) : (
+            formatFieldValue(field, task.customFields?.[field.id])
+          )}
+        </TableCell>
+      ))}
       <TableCell>
         <div className={styles.actions}>
           {editing ? (

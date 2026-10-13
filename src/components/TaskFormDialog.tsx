@@ -11,19 +11,20 @@ import {
   Dropdown,
   Field,
   Input,
-  MessageBar,
-  MessageBarBody,
   Option,
   Textarea,
   makeStyles,
 } from '@fluentui/react-components';
-import { ApiError } from '../api/client';
-import { TASK_PRIORITIES, TASK_STATUSES, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
+import { TASK_PRIORITIES, TASK_STATUSES, type FormField, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
 import { buildTaskInput, emptyTaskDraft } from '../utils/taskDraft';
-import { PRIORITY_LABELS, STATUS_LABELS } from "../utils/helpers";
+import { missingRequiredFields } from '../utils/customFields';
+import { PRIORITY_LABELS, STATUS_LABELS, TASK_FIELD_LABELS } from "../utils/helpers";
+import { useErrorToast } from '../hooks/useErrorToast';
+import { CustomFieldInput } from './CustomFieldInput';
 
 interface TaskFormDialogProps {
   open: boolean;
+  fields: FormField[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: TaskInput) => Promise<void>;
 }
@@ -36,12 +37,12 @@ const useStyles = makeStyles({
   },
 });
 
-export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, fields, onOpenChange, onSubmit }: TaskFormDialogProps) {
   const styles = useStyles();
+  const showError = useErrorToast();
   const [draft, setDraft] = useState<TaskDraft>(emptyTaskDraft);
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>();
   const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
@@ -49,27 +50,27 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
       setDraft(emptyTaskDraft());
       setStatus('todo');
       setSubmitting(false);
-      setError(undefined);
       setShowValidation(false);
     }
   }, [open]);
 
   const titleInvalid = showValidation && !draft.title.trim();
+  const missingFields = missingRequiredFields(fields, draft.customFields).map((field) => field.id);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!draft.title.trim()) {
-      setShowValidation(true);
-      return;
-    }
+    // TEMP(verify-error): FE validation disabled so backend error details surface. Restore before shipping.
+    // if (!draft.title.trim() || missingFields.length > 0) {
+    //   setShowValidation(true);
+    //   return;
+    // }
 
     setSubmitting(true);
-    setError(undefined);
     try {
-      await onSubmit(buildTaskInput(draft, status));
+      await onSubmit(buildTaskInput(draft, status, fields));
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create task');
+      showError('Create task failed', err, 'Please try again.', fields);
     } finally {
       setSubmitting(false);
     }
@@ -82,13 +83,8 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
           <DialogBody>
             <DialogTitle>New task</DialogTitle>
             <DialogContent className={styles.content}>
-              {error && (
-                <MessageBar intent="error">
-                  <MessageBarBody>{error}</MessageBarBody>
-                </MessageBar>
-              )}
               <Field
-                label="Title"
+                label={TASK_FIELD_LABELS.title}
                 required
                 validationState={titleInvalid ? 'error' : 'none'}
                 validationMessage={titleInvalid ? 'Title is required' : undefined}
@@ -99,14 +95,14 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
                   onChange={(_, data) => setDraft({ ...draft, title: data.value })}
                 />
               </Field>
-              <Field label="Description">
+              <Field label={TASK_FIELD_LABELS.description}>
                 <Textarea
                   value={draft.description}
                   disabled={submitting}
                   onChange={(_, data) => setDraft({ ...draft, description: data.value })}
                 />
               </Field>
-              <Field label="Due date">
+              <Field label={TASK_FIELD_LABELS.dueDate}>
                 <Input
                   type="datetime-local"
                   value={draft.dueDate}
@@ -114,7 +110,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
                   onChange={(_, data) => setDraft({ ...draft, dueDate: data.value })}
                 />
               </Field>
-              <Field label="Priority">
+              <Field label={TASK_FIELD_LABELS.priority}>
                 <Dropdown
                   value={PRIORITY_LABELS[draft.priority]}
                   selectedOptions={[draft.priority]}
@@ -132,7 +128,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
                   ))}
                 </Dropdown>
               </Field>
-              <Field label="Status">
+              <Field label={TASK_FIELD_LABELS.status}>
                 <Dropdown
                   value={STATUS_LABELS[status]}
                   selectedOptions={[status]}
@@ -150,13 +146,34 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit }: TaskFormDialogP
                   ))}
                 </Dropdown>
               </Field>
-              <Field label="Tags" hint="Separate tags with commas">
+              <Field label={TASK_FIELD_LABELS.tags} hint="Separate tags with commas">
                 <Input
                   value={draft.tags}
                   disabled={submitting}
                   onChange={(_, data) => setDraft({ ...draft, tags: data.value })}
                 />
               </Field>
+              {fields.map((field) => {
+                const invalid = showValidation && missingFields.includes(field.id);
+                return (
+                  <Field
+                    key={field.id}
+                    label={field.label}
+                    required={field.required}
+                    validationState={invalid ? 'error' : 'none'}
+                    validationMessage={invalid ? `${field.label} is required` : undefined}
+                  >
+                    <CustomFieldInput
+                      field={field}
+                      value={draft.customFields[field.id] ?? ''}
+                      disabled={submitting}
+                      onChange={(value) =>
+                        setDraft({ ...draft, customFields: { ...draft.customFields, [field.id]: value } })
+                      }
+                    />
+                  </Field>
+                );
+              })}
             </DialogContent>
             <DialogActions>
               <DialogTrigger disableButtonEnhancement>

@@ -1,9 +1,10 @@
 import { Checkbox, Table, TableBody, TableHeader, TableHeaderCell, TableRow, makeStyles } from '@fluentui/react-components';
-import type { Task, TaskInput, TaskStatus } from '../utils/types';
+import type { FormField, Task, TaskInput, TaskStatus } from '../utils/types';
 import { TaskRow } from './TaskRow';
 
 interface TaskTableProps {
   tasks: Task[];
+  fields: FormField[];
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
@@ -23,6 +24,7 @@ const useStyles = makeStyles({
 
 export function TaskTable({
   tasks,
+  fields,
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
@@ -36,7 +38,7 @@ export function TaskTable({
 
   return (
     <div className={styles.wrapper}>
-      <Table size="small">
+      <Table size="small" style={{ tableLayout: 'auto' }}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell className={styles.select}>
@@ -51,6 +53,9 @@ export function TaskTable({
             <TableHeaderCell>Priority</TableHeaderCell>
             <TableHeaderCell>Status</TableHeaderCell>
             <TableHeaderCell>Tags</TableHeaderCell>
+            {fields.map((field) => (
+              <TableHeaderCell key={field.id}>{field.label}</TableHeaderCell>
+            ))}
             <TableHeaderCell>Actions</TableHeaderCell>
           </TableRow>
         </TableHeader>
@@ -59,6 +64,7 @@ export function TaskTable({
             <TaskRow
               key={task.id}
               task={task}
+              fields={fields}
               selected={selectedIds.includes(task.id)}
               onToggleSelect={onToggleSelect}
               onUpdate={onUpdate}

@@ -1,14 +1,20 @@
-import axios from "axios";
+import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly details?: string[],
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+interface ApiErrorBody {
+  error?: string;
+  details?: string[];
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -18,17 +24,23 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     Object.assign(headers, initHeaders);
   }
 
-  const response = await axios(`${API_BASE_URL}${path}`, {
-    headers,
-    method: init?.method,
-    data: init?.body,
-  });
+  try {
+    const response = await axios(`${API_BASE_URL}${path}`, {
+      headers,
+      method: init?.method,
+      data: init?.body,
+    });
 
-  if (response.status === 204) {
-    return undefined as T;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    return response.data as T;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const body = error.response?.data as ApiErrorBody | undefined;
+      throw new ApiError(error.response?.status ?? 0, body?.error ?? error.message, body?.details);
+    }
+    throw error;
   }
-
-  const body: unknown = response.data;
-
-  return body as T;
 }

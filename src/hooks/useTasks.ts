@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError } from '../api/client';
 import { listTasks } from '../api/tasks';
 import type { Task, TaskListQuery, TaskListResult } from '../utils/types';
+import { describeError, type ErrorInfo } from '../utils/apiError';
 
 interface UseTasksResult {
   data?: TaskListResult;
   loading: boolean;
-  error?: string;
+  error?: ErrorInfo;
   reload: (options?: { silent?: boolean }) => Promise<void>;
   /**
    * Cancels the current reload operation if one is in flight.
@@ -21,7 +21,7 @@ interface UseTasksResult {
 export function useTasks(query: TaskListQuery): UseTasksResult {
   const [data, setData] = useState<TaskListResult>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<ErrorInfo>();
   const inFlightRef = useRef<AbortController>();
 
   const { q, status, priority, tag, page, pageSize } = query;
@@ -41,7 +41,7 @@ export function useTasks(query: TaskListQuery): UseTasksResult {
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          setError(err instanceof ApiError ? err.message : 'Failed to load tasks');
+          setError(describeError(err, 'Failed to load tasks'));
         }
       } finally {
         if (inFlightRef.current === controller) {

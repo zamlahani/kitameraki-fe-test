@@ -19,6 +19,16 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
   high: 'High',
 };
 
+export const TASK_FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  description: 'Description',
+  dueDate: 'Due date',
+  priority: 'Priority',
+  status: 'Status',
+  tags: 'Tags',
+  customFields: 'Custom fields',
+};
+
 export function parseTags(value: string): string[] {
   return value
     .split(',')

@@ -1,6 +1,7 @@
 import { Toast, ToastBody, ToastTitle, makeStyles, tokens, useToastController } from '@fluentui/react-components';
 import { ErrorCircleFilled } from '@fluentui/react-icons';
-import { ApiError } from '../api/client';
+import type { FormField } from '../utils/types';
+import { describeError } from '../utils/apiError';
 
 export const TOASTER_ID = 'app-toaster';
 
@@ -19,15 +20,22 @@ const useStyles = makeStyles({
   },
   body: {
     color: tokens.colorNeutralForeground2,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  details: {
+    margin: 0,
+    paddingLeft: '18px',
   },
 });
 
-export function useErrorToast(): (title: string, err: unknown, fallback: string) => void {
+export function useErrorToast(): (title: string, err: unknown, fallback: string, fields?: FormField[]) => void {
   const styles = useStyles();
   const { dispatchToast } = useToastController(TOASTER_ID);
 
-  return (title: string, err: unknown, fallback: string) => {
-    const detail = err instanceof ApiError ? err.message : fallback;
+  return (title: string, err: unknown, fallback: string, fields: FormField[] = []) => {
+    const { message, details } = describeError(err, fallback, fields);
     dispatchToast(
       <Toast className={styles.toast}>
         <ToastTitle
@@ -36,7 +44,16 @@ export function useErrorToast(): (title: string, err: unknown, fallback: string)
         >
           {title}
         </ToastTitle>
-        <ToastBody className={styles.body}>{detail}</ToastBody>
+        <ToastBody className={styles.body}>
+          <span>{message}</span>
+          {details.length > 0 && (
+            <ul className={styles.details}>
+              {details.map((detail) => (
+                <li key={detail}>{detail}</li>
+              ))}
+            </ul>
+          )}
+        </ToastBody>
       </Toast>,
       { intent: 'error', timeout: 6000, pauseOnHover: true },
     );
