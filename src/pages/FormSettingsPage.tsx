@@ -6,7 +6,9 @@ import {
   Field,
   Input,
   MessageBar,
+  MessageBarActions,
   MessageBarBody,
+  MessageBarTitle,
   Option,
   Switch,
   Text,
@@ -19,7 +21,7 @@ import {
   useToastController,
   type GriffelStyle,
 } from '@fluentui/react-components';
-import { DeleteRegular, DragRegular, SaveRegular } from '@fluentui/react-icons';
+import { ArrowSyncRegular, DeleteRegular, DragRegular, SaveRegular } from '@fluentui/react-icons';
 import {
   DndContext,
   DragOverlay,
@@ -48,7 +50,7 @@ import { saveFormSetting } from '../api/formSettings';
 import { CustomFieldInput } from '../components/CustomFieldInput';
 import { TOASTER_ID, useErrorToast } from '../hooks/useErrorToast';
 import type { FormField, FormFieldType, FormRow } from '../utils/types';
-import { useFormSetting } from "../hooks/useFormSetting";
+import { useFormSetting } from '../hooks/useFormSetting';
 
 const TYPE_LABELS: Record<FormFieldType, string> = {
   text: 'Text',
@@ -85,7 +87,8 @@ const activeSlotStyle: GriffelStyle = {
   backgroundColor: tokens.colorBrandBackground2,
 };
 
-type ActiveDrag = { kind: 'preset'; type: FormFieldType } | { kind: 'field'; field: FormField } | { kind: 'row'; row: FormRow } | null;
+type ActiveDrag =
+  { kind: 'preset'; type: FormFieldType } | { kind: 'field'; field: FormField } | { kind: 'row'; row: FormRow } | null;
 
 const useStyles = makeStyles({
   toolbar: {
@@ -229,7 +232,7 @@ const useStyles = makeStyles({
   },
   fieldDeleteBtn: {
     display: 'block',
-    visibility: 'hidden'
+    visibility: 'hidden',
   },
   fieldDeleteBtnSelected: {
     marginLeft: 'auto',
@@ -391,7 +394,10 @@ function FieldCard({ field, selected, dropTarget, reflowShift, onSelect, onDelet
         isDragging ? styles.fieldDragging : '',
         dropTarget ? styles.rowDropTarget : '',
       ].join(' ')}
-      onClick={onSelect}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
       {...attributes}
       {...listeners}
     >
@@ -437,7 +443,7 @@ function DragPreview({ active }: { active: NonNullable<ActiveDrag> }) {
 
   const field = active.kind === 'preset' ? newField(active.type) : active.field;
   return (
-    <div className={styles.field} style={{minWidth: 240}}>
+    <div className={styles.field} style={{ minWidth: 240 }}>
       <div className={styles.fieldHeader}>
         <DragRegular aria-hidden className={styles.grip} />
         <Caption1 className={styles.fieldLabel}>{field.label}</Caption1>
@@ -492,9 +498,10 @@ function RowCard({
     id: row.id,
   });
 
-  const reflowFieldId = presetDragging && dropFieldId !== undefined && row.fields.some((f) => f.id === dropFieldId)
-    ? dropFieldId
-    : undefined;
+  const reflowFieldId =
+    presetDragging && dropFieldId !== undefined && row.fields.some((f) => f.id === dropFieldId)
+      ? dropFieldId
+      : undefined;
 
   return (
     <div
@@ -533,11 +540,7 @@ function RowCard({
             />
           ))}
           {row.fields.length < MAX_FIELDS_PER_ROW ? (
-            <EmptyCell
-              rowId={row.id}
-              dropTarget={dropEmptyRowId === row.id}
-              collapsed={reflowFieldId !== undefined}
-            />
+            <EmptyCell rowId={row.id} dropTarget={dropEmptyRowId === row.id} collapsed={reflowFieldId !== undefined} />
           ) : null}
         </div>
       </SortableContext>
@@ -549,7 +552,7 @@ export function FormSettingsPage() {
   const styles = useStyles();
   const showError = useErrorToast();
   const { dispatchToast } = useToastController(TOASTER_ID);
-  const { rows: setting, formSettingError, retryFormSetting } = useFormSetting()
+  const { rows: setting, isLoading, formSettingError, retryFormSetting } = useFormSetting();
 
   const [rows, setRows] = useState<FormRow[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>();
@@ -866,25 +869,29 @@ export function FormSettingsPage() {
     }
   };
 
-  if (formSettingError && !setting) {
+  if (formSettingError) {
     return (
       <MessageBar intent="error">
         <MessageBarBody>
-          <Title3>Form settings couldn&apos;t be loaded</Title3>
-          <Button appearance="primary" onClick={() => retryFormSetting()}>
-            Retry
-          </Button>
+          <MessageBarTitle>Form settings couldn&apos;t be loaded</MessageBarTitle>
         </MessageBarBody>
+        <MessageBarActions
+          containerAction={
+            <Button appearance="transparent" icon={<ArrowSyncRegular />} onClick={() => retryFormSetting()}>
+              Retry
+            </Button>
+          }
+        />
       </MessageBar>
     );
   }
 
-  if (!setting) {
+  if (isLoading) {
     return <Text>Loading form settings…</Text>;
   }
 
   return (
-    <div>
+    <div  onClick={() => setSelectedFieldId(undefined)}>
       <div className={styles.toolbar}>
         <Title2>Form settings</Title2>
         <Button appearance="primary" icon={<SaveRegular />} disabled={!dirty || saving} onClick={save}>
@@ -993,9 +1000,7 @@ export function FormSettingsPage() {
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {activeDrag ? <DragPreview active={activeDrag} /> : null}
-        </DragOverlay>
+        <DragOverlay dropAnimation={null}>{activeDrag ? <DragPreview active={activeDrag} /> : null}</DragOverlay>
       </DndContext>
     </div>
   );

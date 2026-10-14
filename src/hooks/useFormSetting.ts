@@ -6,6 +6,7 @@ import type { FormField, FormRow, FormSetting } from '../utils/types';
 interface FormSettingState {
   rows: FormRow[];
   fields: FormField[];
+  isLoading: boolean;
   formSettingError?: unknown;
   retryFormSetting: () => void;
 }
@@ -19,6 +20,7 @@ export function useFormSetting(): FormSettingState {
   return {
     rows,
     fields,
+    isLoading: !data && !error,
     formSettingError: error && !data ? error : undefined,
     retryFormSetting: () => {
       void mutate();
