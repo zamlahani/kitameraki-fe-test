@@ -1,11 +1,5 @@
-import type { FormField, FormSetting } from './types';
+import type { FormField } from './types';
 import { dayjs } from './helpers';
-
-export function activeFields(setting?: FormSetting): FormField[] {
-  return (setting?.rows ?? [])
-    .flatMap((row) => row.fields)
-    .filter((field) => !field.deletedAt);
-}
 
 export function toFieldValue(field: FormField, value: string | undefined): string {
   const raw = value ?? '';

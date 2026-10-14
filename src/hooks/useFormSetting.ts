@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import { getFormSetting } from '../api/formSettings';
-import { activeFields } from '../utils/customFields';
-import type { FormField, FormSetting } from '../utils/types';
+import type { FormField, FormRow, FormSetting } from '../utils/types';
 
 interface FormSettingState {
+  rows: FormRow[];
   fields: FormField[];
   formSettingError?: unknown;
   retryFormSetting: () => void;
@@ -13,9 +13,11 @@ interface FormSettingState {
 export function useFormSetting(): FormSettingState {
   const { data, error, mutate } = useSWR<FormSetting>('form-settings', getFormSetting);
 
-  const fields = useMemo(() => activeFields(data), [data]);
+  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const fields = useMemo(() => rows.flatMap((row) => row.fields), [rows]);
 
   return {
+    rows,
     fields,
     formSettingError: error && !data ? error : undefined,
     retryFormSetting: () => {

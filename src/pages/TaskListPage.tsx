@@ -67,7 +67,7 @@ export function TaskListPage() {
   const [updatesInFlight, setUpdatesInFlight] = useState(0);
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const { data, loading, error, reload, cancelReload, replaceTask, removeUnmatchedTask, dismissError } = useTasks(query);
-  const { fields, formSettingError, retryFormSetting } = useFormSetting();
+  const { rows, fields, formSettingError, retryFormSetting } = useFormSetting();
   const items = data?.items ?? [];
 
   useEffect(() => {
@@ -244,7 +244,7 @@ export function TaskListPage() {
         )}
       </div>
 
-      <TaskFormDialog open={dialogOpen} fields={fields} onOpenChange={setDialogOpen} onSubmit={handleCreate} />
+      <TaskFormDialog open={dialogOpen} rows={rows} onOpenChange={setDialogOpen} onSubmit={handleCreate} />
 
       <DeleteDialog
         pendingDelete={pendingDelete}
