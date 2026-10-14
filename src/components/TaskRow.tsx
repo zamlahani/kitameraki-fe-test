@@ -15,8 +15,7 @@ import { TASK_PRIORITIES, TASK_STATUSES, type FormField, type Task, type TaskDra
 import { useErrorToast } from '../hooks/useErrorToast';
 import { dayjs, formatTags, PRIORITY_LABELS, STATUS_LABELS } from '../utils/helpers';
 import { buildTaskUpdate, toTaskDraft } from '../utils/taskDraft';
-// TEMP(verify-error): re-add this import when FE validation is restored.
-// import { missingRequiredFields } from '../utils/customFields';
+import { missingRequiredFields } from '../utils/customFields';
 import { formatFieldValue } from '../utils/customFields';
 import { CustomFieldInput } from './CustomFieldInput';
 
@@ -64,16 +63,15 @@ export function TaskRow({ task, fields, selected, onToggleSelect, onUpdate, onSt
   };
 
   const save = async () => {
-    // TEMP(verify-error): FE validation disabled so backend error details surface. Restore before shipping.
-    // const missing = missingRequiredFields(fields, draft.customFields);
-    // if (missing.length > 0) {
-    //   showError(
-    //     `Save "${task.title}" failed`,
-    //     undefined,
-    //     `Required: ${missing.map((field) => field.label).join(', ')}`,
-    //   );
-    //   return;
-    // }
+    const missing = missingRequiredFields(fields, draft.customFields);
+    if (missing.length > 0) {
+      showError(
+        `Save "${task.title}" failed`,
+        undefined,
+        `Required: ${missing.map((field) => field.label).join(', ')}`,
+      );
+      return;
+    }
 
     setBusy(true);
     try {
@@ -115,7 +113,7 @@ export function TaskRow({ task, fields, selected, onToggleSelect, onUpdate, onSt
           <Input
             className={styles.field}
             value={draft.title}
-            // TODO add required prop
+            required
             disabled={busy}
             onChange={(_, data) => setDraft({ ...draft, title: data.value })}
           />

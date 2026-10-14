@@ -59,11 +59,10 @@ export function TaskFormDialog({ open, fields, onOpenChange, onSubmit }: TaskFor
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    // TEMP(verify-error): FE validation disabled so backend error details surface. Restore before shipping.
-    // if (!draft.title.trim() || missingFields.length > 0) {
-    //   setShowValidation(true);
-    //   return;
-    // }
+    if (!draft.title.trim() || missingFields.length > 0) {
+      setShowValidation(true);
+      return;
+    }
 
     setSubmitting(true);
     try {
