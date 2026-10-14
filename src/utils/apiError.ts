@@ -17,9 +17,9 @@ export function describeError(err: unknown, fallback: string, fields: FormField[
     labels.set(field.id, field.label);
   }
 
-  const details = (err.details ?? []).map((detail) =>
-    detail.replace(/[A-Za-z0-9_]+/g, (token) => labels.get(token) ?? token),
-  );
+  const details = (err.details ?? []).map((detail) => {
+    return detail.replace(/[A-Za-z0-9_-]+/g, (token) => labels.get(token) ?? token)
+  })
 
   return { message: err.message, details };
 }
