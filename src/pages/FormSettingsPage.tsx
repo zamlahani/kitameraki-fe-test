@@ -228,7 +228,8 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   fieldDeleteBtn: {
-    display: 'none',
+    display: 'block',
+    visibility: 'hidden'
   },
   fieldDeleteBtnSelected: {
     marginLeft: 'auto',

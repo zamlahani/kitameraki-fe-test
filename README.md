@@ -37,3 +37,11 @@ npm run dev      # http://localhost:5173
 | `npm test`           | Run the test suite once              |
 | `npm run test:watch` | Run tests in watch mode              |
 
+## API notes
+
+`updateTask(id, patch)` sends only the changed fields (patch semantics) to `PUT /api/tasks/{id}` — for example, changing a task's status from the list sends `{ status }` alone, so nothing else is re-sent or re-validated.
+
+## Known issues
+
+- Form settings page: no drag preview when swapping fields (the swap itself works); occasional preview flicker in some cases.
+
