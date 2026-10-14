@@ -16,11 +16,11 @@ import { createTask, updateTask } from '../api/tasks';
 import type { Task, TaskInput, TaskListQuery, TaskStatus } from '../utils/types';
 import { useTasks } from '../hooks/useTasks';
 import { useFormSetting } from '../hooks/useFormSetting';
-import { Pagination } from './Pagination';
-import { TaskFormDialog } from './TaskFormDialog';
-import { TaskTable } from './TaskTable';
-import { TaskToolbar } from './TaskToolbar';
-import DeleteDialog from './DeleteDialog';
+import { Pagination } from '../components/Pagination';
+import { TaskFormDialog } from '../components/TaskFormDialog';
+import { TaskTable } from '../components/TaskTable';
+import { TaskToolbar } from '../components/TaskToolbar';
+import DeleteDialog from '../components/DeleteDialog';
 
 const useStyles = makeStyles({
   content: {
