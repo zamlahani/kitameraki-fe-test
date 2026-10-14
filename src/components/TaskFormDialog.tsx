@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Button,
   Dialog,
@@ -15,7 +15,7 @@ import {
   Textarea,
   makeStyles,
 } from '@fluentui/react-components';
-import { TASK_PRIORITIES, TASK_STATUSES, type FormField, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
+import { TASK_PRIORITIES, TASK_STATUSES, type FormRow, type TaskDraft, type TaskInput, type TaskPriority, type TaskStatus } from '../utils/types';
 import { buildTaskInput, emptyTaskDraft } from '../utils/taskDraft';
 import { missingRequiredFields } from '../utils/customFields';
 import { PRIORITY_LABELS, STATUS_LABELS, TASK_FIELD_LABELS } from "../utils/helpers";
@@ -24,7 +24,7 @@ import { CustomFieldInput } from './CustomFieldInput';
 
 interface TaskFormDialogProps {
   open: boolean;
-  fields: FormField[];
+  rows: FormRow[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: TaskInput) => Promise<void>;
 }
@@ -35,15 +35,21 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '12px',
   },
+  row: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '12px',
+  },
 });
 
-export function TaskFormDialog({ open, fields, onOpenChange, onSubmit }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, rows, onOpenChange, onSubmit }: TaskFormDialogProps) {
   const styles = useStyles();
   const showError = useErrorToast();
   const [draft, setDraft] = useState<TaskDraft>(emptyTaskDraft);
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [submitting, setSubmitting] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  const fields = useMemo(() => rows.flatMap((row) => row.fields), [rows]);
 
   useEffect(() => {
     if (open) {
@@ -152,27 +158,31 @@ export function TaskFormDialog({ open, fields, onOpenChange, onSubmit }: TaskFor
                   onChange={(_, data) => setDraft({ ...draft, tags: data.value })}
                 />
               </Field>
-              {fields.map((field) => {
-                const invalid = showValidation && missingFields.includes(field.id);
-                return (
-                  <Field
-                    key={field.id}
-                    label={field.label}
-                    required={field.required}
-                    validationState={invalid ? 'error' : 'none'}
-                    validationMessage={invalid ? `${field.label} is required` : undefined}
-                  >
-                    <CustomFieldInput
-                      field={field}
-                      value={draft.customFields[field.id] ?? ''}
-                      disabled={submitting}
-                      onChange={(value) =>
-                        setDraft({ ...draft, customFields: { ...draft.customFields, [field.id]: value } })
-                      }
-                    />
-                  </Field>
-                );
-              })}
+              {rows.map((row) => (
+                <div key={row.id} className={styles.row}>
+                  {row.fields.map((field) => {
+                    const invalid = showValidation && missingFields.includes(field.id);
+                    return (
+                      <Field
+                        key={field.id}
+                        label={field.label}
+                        required={field.required}
+                        validationState={invalid ? 'error' : 'none'}
+                        validationMessage={invalid ? `${field.label} is required` : undefined}
+                      >
+                        <CustomFieldInput
+                          field={field}
+                          value={draft.customFields[field.id] ?? ''}
+                          disabled={submitting}
+                          onChange={(value) =>
+                            setDraft({ ...draft, customFields: { ...draft.customFields, [field.id]: value } })
+                          }
+                        />
+                      </Field>
+                    );
+                  })}
+                </div>
+              ))}
             </DialogContent>
             <DialogActions>
               <DialogTrigger disableButtonEnhancement>

@@ -44,11 +44,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import useSWR from 'swr';
-import { getFormSetting, saveFormSetting } from '../api/formSettings';
+import { saveFormSetting } from '../api/formSettings';
 import { CustomFieldInput } from '../components/CustomFieldInput';
 import { TOASTER_ID, useErrorToast } from '../hooks/useErrorToast';
-import type { FormField, FormFieldType, FormRow, FormSetting } from '../utils/types';
+import type { FormField, FormFieldType, FormRow } from '../utils/types';
+import { useFormSetting } from "../hooks/useFormSetting";
 
 const TYPE_LABELS: Record<FormFieldType, string> = {
   text: 'Text',
@@ -228,7 +228,8 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   fieldDeleteBtn: {
-    display: 'none',
+    display: 'block',
+    visibility: 'hidden'
   },
   fieldDeleteBtnSelected: {
     marginLeft: 'auto',
@@ -548,7 +549,7 @@ export function FormSettingsPage() {
   const styles = useStyles();
   const showError = useErrorToast();
   const { dispatchToast } = useToastController(TOASTER_ID);
-  const { data: setting, error, mutate } = useSWR<FormSetting>('/form-settings', getFormSetting);
+  const { rows: setting, formSettingError, retryFormSetting } = useFormSetting()
 
   const [rows, setRows] = useState<FormRow[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>();
@@ -568,7 +569,7 @@ export function FormSettingsPage() {
 
   useEffect(() => {
     if (setting) {
-      setRows(setting.rows);
+      setRows(setting);
       setSelectedFieldId(undefined);
     }
   }, [setting]);
@@ -594,7 +595,7 @@ export function FormSettingsPage() {
     [rows],
   );
 
-  const dirty = useMemo(() => JSON.stringify(rows) !== JSON.stringify(setting?.rows ?? []), [rows, setting]);
+  const dirty = useMemo(() => JSON.stringify(rows) !== JSON.stringify(setting ?? []), [rows, setting]);
 
   const patchField = (fieldId: string, patch: Partial<FormField>) => {
     setRows(
@@ -702,11 +703,6 @@ export function FormSettingsPage() {
         ? overId
         : undefined;
 
-    // Reflow preview is a pure function of `over`: dnd-kit measures droppables with
-    // getTransformAgnosticClientRect, so the locked field's rect stays at its layout
-    // position (col1) even while shifted right by transform. Hovering col1 → over = field
-    // → preview on; leaving it (gap/col2/empty cell) → over changes → preview off. No
-    // sticky lock: it kept the preview alive across col2, forcing an exit-row to reset.
     const lockedFieldId = isFullRow ? undefined : overFieldId;
 
     setDropFieldId(lockedFieldId);
@@ -856,7 +852,7 @@ export function FormSettingsPage() {
     setSaving(true);
     try {
       await saveFormSetting(withoutEmptyRows(rows));
-      await mutate();
+      await retryFormSetting();
       dispatchToast(
         <Toast>
           <ToastTitle>Saved</ToastTitle>
@@ -870,12 +866,12 @@ export function FormSettingsPage() {
     }
   };
 
-  if (error && !setting) {
+  if (formSettingError && !setting) {
     return (
       <MessageBar intent="error">
         <MessageBarBody>
           <Title3>Form settings couldn&apos;t be loaded</Title3>
-          <Button appearance="primary" onClick={() => mutate()}>
+          <Button appearance="primary" onClick={() => retryFormSetting()}>
             Retry
           </Button>
         </MessageBarBody>
